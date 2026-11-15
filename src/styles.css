@@ -1,0 +1,346 @@
+/*
+ * Neutral by design: this page is for judging colour, so nothing on it has any.
+ * - Surfaces: darktable's grey theme (page #6a6a6a, image backdrop #777777 = L* 50,
+ *   darktable source: "need to be middle grey"). ISO 3664 §4.5.5 asks for a neutral
+ *   surround; darktable's manual warns that dark UIs push edits too contrasty.
+ * - Type sizes, line widths, control sizes: measured on oklch.com (2026-11-15).
+ * - No accent colour, cards, shadows or gradients.
+ */
+:root {
+  --bg: #6a6a6a;
+  --image-bg: #777777;
+  --text: #f1f1f1;
+  --text-2: #d4d4d4;
+  --line: #5e5e5e;
+  --field: #5e5e5e;
+  --selected: #919191;
+  --marker: #ffffff;
+  --marker-halo: #000000;
+
+  --font: ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", monospace;
+  --fs-note: 12px;
+  --fs-body: 15px;
+  --fs-head: 17.5px;
+
+  --gap-xs: 4px;
+  --gap-s: 12px;
+  --gap-m: 20px;
+  --gap-l: 32px;
+  --control: 40px;
+  --radius: 12px;
+
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--fs-body) / 20px var(--font);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  padding: var(--gap-l);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+@media (min-width: 1320px) {
+  main {
+    padding: var(--gap-l) 72px;
+  }
+}
+
+header p {
+  max-width: 70ch;
+  margin: var(--gap-s) 0 0;
+}
+
+h1,
+h2 {
+  font-size: var(--fs-head);
+  line-height: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+section {
+  border-top: 1px solid var(--line);
+  margin-top: var(--gap-l);
+  padding-top: var(--gap-m);
+}
+
+section > h2 {
+  margin-bottom: var(--gap-s);
+}
+
+p {
+  margin: var(--gap-s) 0;
+}
+
+/* Small print. Instructions stay in the primary colour; only metadata is dimmed
+   (#d4d4d4 on the page grey is 3.65:1, too low for text that must be read). */
+.note,
+.dim {
+  font-size: var(--fs-note);
+  line-height: 16px;
+}
+
+.dim {
+  color: var(--text-2);
+}
+
+.error {
+  border: 2px solid var(--text);
+  border-radius: var(--radius);
+  padding: var(--gap-s);
+  max-width: 70ch;
+}
+
+.error::before {
+  content: "Problem: ";
+  font-weight: 700;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-m);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--gap-l);
+  align-items: start;
+}
+
+.row {
+  display: flex;
+  gap: var(--gap-m);
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.compare .row {
+  justify-content: space-between;
+}
+
+/* Images sit on middle grey, never on the page grey or black. */
+canvas {
+  display: block;
+  background: var(--image-bg);
+}
+
+canvas.full,
+.picker canvas {
+  width: 100%;
+  height: auto;
+}
+
+.picker {
+  margin: 0;
+}
+
+.picker canvas {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.picker figcaption {
+  margin-bottom: var(--gap-xs);
+}
+
+/* File inputs: a dashed field, as oklch.com frames its tracks. */
+.drop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-xs);
+  border: 1px dashed var(--text-2);
+  border-radius: var(--radius);
+  padding: var(--gap-s) var(--gap-m);
+}
+
+.drop {
+  cursor: pointer;
+}
+
+.drop:hover {
+  border-color: var(--text);
+}
+
+.drop:focus-within {
+  outline: 3px solid var(--text);
+  outline-offset: 1px;
+}
+
+.hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+button,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--field);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  height: var(--control);
+  padding: 0 var(--gap-s);
+  margin-top: var(--gap-s);
+}
+
+select {
+  margin-top: 0;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--text-2);
+}
+
+button.primary {
+  border-color: var(--text);
+  font-weight: 700;
+}
+
+button:disabled {
+  color: var(--text-2);
+  cursor: default;
+}
+
+button[aria-pressed="true"] {
+  background: var(--selected);
+}
+
+:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 1px;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--gap-xs);
+  margin-bottom: var(--gap-s);
+}
+
+.tabs button {
+  margin-top: 0;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-s);
+}
+
+/* Slider: label, track, value on one line. */
+.slider {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap-xs);
+  min-width: 240px;
+}
+
+.slider-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap-s);
+}
+
+input[type="range"] {
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--text-2);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 1px;
+  background: var(--text-2);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--text);
+  transform: rotate(45deg);
+  border: 0;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--text);
+  transform: rotate(45deg);
+  border: 0;
+  border-radius: 0;
+}
+
+table {
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+td,
+th {
+  padding: var(--gap-xs) var(--gap-s) var(--gap-xs) 0;
+  text-align: left;
+  font-weight: 400;
+}
+
+th {
+  border-bottom: 1px solid var(--line);
+  font-size: var(--fs-note);
+  color: var(--text-2);
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+tr.strong td {
+  font-weight: 700;
+}
+
+.report {
+  margin-top: var(--gap-s);
+}
+
+.compare {
+  margin-bottom: var(--gap-s);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.compare canvas.full {
+  width: auto;
+  max-width: 100%;
+  max-height: 75vh;
+}
+
+.compare input[type="range"] {
+  margin-top: var(--gap-s);
+}
+
+@media (max-width: 900px) {
+  .pair,
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
