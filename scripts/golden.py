@@ -45,7 +45,22 @@ lab1 = np.concatenate([
 lab2 = lab1 + rng.normal(0, 3, lab1.shape)
 lab2[40:, 1] = -lab1[40:, 1]
 
+# A 5^3 LUT with a non-linear table (identity + a smooth twist) and its trilinear
+# lookup in colour-science, for tests/lut.test.ts.
+lut = colour.LUT3D(size=5)
+t = lut.table
+lut.table = np.clip(t + 0.08 * np.sin(6 * t[..., [1, 2, 0]]) - 0.05 * t ** 2, 0, 1)
+lut_in = np.concatenate([rng.random((30, 3)), [[0, 0, 0], [1, 1, 1], [0.25, 0.5, 0.75], [1.2, -0.1, 0.5]]])
+lut_out = lut.apply(np.clip(lut_in, 0, 1), interpolator=colour.algebra.table_interpolation_trilinear)
+
 out = {
+    "lut": {
+        "size": 5,
+        # colour indexes table[r, g, b]; flatten in .cube order (red fastest).
+        "data": lut.table.transpose(2, 1, 0, 3).reshape(-1).tolist(),
+        "in": lut_in.tolist(),
+        "out": lut_out.tolist(),
+    },
     "rgb": rgb.tolist(),
     "spaces": spaces,
     "srgb_to_p3": srgb_to_p3.tolist(),
