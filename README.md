@@ -4,15 +4,16 @@ measured-lut fits a 3D LUT (`.cube`) that maps one camera's colours to another's
 
 **[Open the tool](https://muneakira6.github.io/measured-lut/)**. If you have no photos at hand, press *Try a sample pair*.
 
-On three test pairs (iPhone 17 Pro Max main camera → X100VI, JPEG), the median CIEDE2000 difference on held-out pixels dropped from 3.3–5.1 to 0.75–0.88:
+It was tested on 286 photo pairs (iPhone 17 Pro Max → X100VI, 93 scenes, converted to JPEG with macOS). After you place the points, the tool scores how well the two photos line up. When the score was 0.6 or more (89 pairs, 43 scenes), the median CIEDE2000 difference on held-out pixels dropped from 6.5 to 1.1:
 
-| Pair | Held-out ΔE00 median, before → after | P95, before → after |
-|---|---|---|
-| 1 | 5.09 → 0.86 | 9.06 → 3.82 |
-| 2 | 3.26 → 0.88 | 8.68 → 3.93 |
-| 3 (portrait source) | 5.04 → 0.75 | 10.05 → 3.84 |
+| Alignment score | Pairs | Held-out ΔE00 median, before → after | P95, before → after |
+|---|---|---|---|
+| 0.75 or more | 43 | 6.23 → 1.03 | 11.1 → 3.5 |
+| 0.6–0.75 | 46 | 7.25 → 1.24 | 13.5 → 5.3 |
+| 0.3–0.6 | 112 | 8.57 → 2.34 | 19.5 → 10.1 |
+| below 0.3 | 85 | 11.36 → 4.61 | 29.2 → 20.3 |
 
-A fourth pair, a backlit tree canopy, only improved from 9.98 to 6.17 (median). See [Limitations](#limitations).
+Below 0.6 the result gets much worse, so the tool asks for better points. In this test the 4 points came from automatic feature matching instead of clicks.
 
 ## Why
 
@@ -20,10 +21,10 @@ On forums, photographers ask how to make a phone match their camera, or how to t
 
 ## How to use
 
-1. Shoot the same scene with both cameras, a few seconds apart and from about the same spot. Choose subjects that don't move, keep the exposures similar, and avoid blown-out sky. A scene with many different colours gives a LUT that covers more of them.
+1. Shoot the same scene with both cameras, a few seconds apart and from the same spot. Distant subjects line up best: the alignment is exact only for a flat or far-away scene, and nearby objects shift against the background between the two shots. In the test, 71 of the 89 well-aligned pairs were taken with the phone's 4× telephoto. Choose subjects that don't move, keep the exposures similar, and avoid blown-out sky. A scene with many different colours gives a LUT that covers more of them.
 2. Get JPEGs. HEIC is not supported yet, because Chrome cannot decode it. In Photos for Mac, choose File → Export → Export Photos, then set Photo Kind to JPEG and Color Profile to Display P3. Use the same route for the photos you fit and for the photos you later apply the LUT to: on four test photos, a Photos export differed from the same HEIC converted directly with macOS by a median ΔE00 of 1.8–3.4. Shooting JPEG on the iPhone (Settings → Camera → Formats → Most Compatible) has not been tested.
 3. Load the camera you want to change as *Source*, and the one to match as *Target*.
-4. Click 4 matching points on each photo. Spread them out and put them on things that did not move. In the *Alignment* view, edges should run straight across the checkerboard squares.
+4. Click 4 matching points on each photo. Spread them out and put them on sharp details that did not move. Aim for an alignment score of 0.6 or more; in the *Alignment* view, edges should run straight across the checkerboard squares.
 5. Check *Pixels used*, adjust the sliders if needed, and press *Fit*.
 6. Compare before and after with the slider, and download the `.cube`.
 
@@ -43,14 +44,14 @@ Four point pairs give a homography (normalised DLT, Hartley & Zisserman, Algorit
 
 ### Sampling
 
-Both images are scaled down to 1000 px and blurred slightly (σ = 2 px). Pixels near edges (the top 30 % by gradient), clipped or near-black pixels, and pixels outside the overlap are dropped. 20 % of the 32-px blocks are held out for the error report. Whole blocks are held out rather than single pixels, because neighbouring pixels are nearly duplicates. On the three pairs, holding out random pixels reported medians 0.05–0.11 lower than block holdout.
+Both images are scaled down to 1000 px and blurred slightly (σ = 2 px). Pixels near edges (the top 30 % by gradient), clipped or near-black pixels, and pixels outside the overlap are dropped. 20 % of the 32-px blocks are held out for the error report. Whole blocks are held out rather than single pixels, because neighbouring pixels are nearly duplicates. On three test pairs, holding out random pixels reported medians 0.05–0.11 lower than block holdout.
 
 ### Fitting
 
 The fit uses lattice regression ([Garcia & Gupta, NIPS 2009](https://proceedings.neurips.cc/paper_files/paper/2009/file/4b0250793549726d5c1ea3906726ebfe-Paper.pdf); [Garcia, Arora & Gupta, IEEE TIP 2012](http://www.mayagupta.org/publications/GarciaAroraGupta_lattice_regression_IEEETransImageProcessing2012.pdf)). The unknowns are the 33³ lattice values, solved so that the LUT *after trilinear interpolation* matches the pairs. Three terms are added to the data term:
 
 - Thin-plate smoothness: second differences along each axis, plus mixed differences with weight 2 (the "torsion" term in [Gupta et al., JMLR 2016](https://jmlr.org/papers/volume17/15-243/15-243.pdf)). Its null space is exactly the affine functions, so regions without data are filled by smooth continuation. A first-order Laplacian flattens those regions instead; Garcia & Gupta (CIC 2009, 2010) report clipped saturated colours and lost contrast near the gamut boundary.
-- A ridge that grows with lattice distance from the nearest sample. It pulls empty corners of the cube back to a prior, a 3×3 matrix fitted in linear light. To compare priors, the 10 % most saturated pixels of each pair were left out of the fit and used as the test. The matrix prior beat the identity on all three pairs (on pair 3: median 2.78 → 1.24, P95 14.7 → 8.8).
+- A ridge that grows with lattice distance from the nearest sample. It pulls empty corners of the cube back to a prior, a 3×3 matrix fitted in linear light. To compare priors, the 10 % most saturated pixels of each pair were left out of the fit and used as the test. The matrix prior beat the identity on all three test pairs (on one of them: median 2.78 → 1.24, P95 14.7 → 8.8).
 - The fit runs on the source's encoded values, because that is the space the `.cube` is applied in. In linear light, the first of the 32 lattice steps would already cover sRGB code values 0–0.19, far too coarse for shadows.
 
 The system is symmetric positive definite. It is solved with Jacobi-preconditioned conjugate gradients without building the matrix: CG only needs matrix × vector, which is one pass over the samples and one over the lattice. With 60,000 pairs this took 106–127 iterations and 1.4–1.8 s on the main thread in Chromium.
@@ -61,13 +62,14 @@ Colour conversions, CIEDE2000 and the trilinear lookup are tested against refere
 
 ## Limitations
 
-- A 3D LUT is a global mapping: each input colour has exactly one output. If the fit pixels still differ by a median above 3 after fitting, the tool shows a warning. Possible causes are misalignment, movement or a change in light between shots, or local processing in the phone, which a global LUT cannot represent. The backlit-canopy pair ended at 5.5 on its fit pixels; which cause applies there has not been checked.
+- A 3D LUT is a global mapping: each input colour has exactly one output. If the fit pixels still differ by a median above 3 after fitting, the tool shows a warning. Possible causes are misalignment, movement or a change in light between shots, or local processing in the phone, which a global LUT cannot represent. In the test, 4 % of the pairs with a good alignment score still got this warning.
 - One pair covers only part of the colour cube. Everything outside it comes from the prior. Combining several pairs into one LUT is planned.
 - Input is 8-bit JPEG only. No HEIC, RAW or HDR gain maps.
 - Tested in Chromium only. Safari and Firefox may handle `colorSpaceConversion` or Display P3 canvases differently.
 
 ## Problems found during development
 
+- Most test pairs were not aligned well enough. On 286 pairs, the fitted error rose steadily as alignment got worse, and 73 % of pairs scoring below 0.3 ended with the warning. The tool now shows the alignment score (the correlation of fine detail between the two photos) right after the points are placed, before any fitting.
 - Photos exports: with default settings, Photos wrote JPEGs with a table-based Apple profile (3 of 4 test photos) or with no profile at all (1 of 4). The tool first refused all of them. The table-based profile is now converted by the browser. Files without a profile are still refused, with a message saying how to export them again.
 - Holdout: random-pixel holdout gave slightly better numbers than block holdout (see *Sampling*). The report uses blocks.
 - Smoothness term: taken literally, the TIP 2012 regulariser uses second differences along each axis only. In 3-D this leaves twists such as r·g unpenalised: the null space is 8-dimensional instead of 4 (checked numerically). The mixed terms fix this, and a test checks the null space.
