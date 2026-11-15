@@ -17,12 +17,32 @@ export interface Photo {
 export async function readPhoto(file: File): Promise<Photo> {
   const buf = await file.arrayBuffer();
   const color = jpegColor(buf);
-  if (!color.space) throw new Error(`${file.name}: ${color.detail}. Only sRGB and Display P3 JPEGs are supported.`);
-  const bitmap = await createImageBitmap(new Blob([buf], { type: "image/jpeg" }), {
-    colorSpaceConversion: "none",
-    imageOrientation: "from-image",
-  });
-  return { name: file.name, color, bitmap };
+  const blob = new Blob([buf], { type: "image/jpeg" });
+  if (color.space) {
+    const bitmap = await createImageBitmap(blob, { colorSpaceConversion: "none", imageOrientation: "from-image" });
+    return { name: file.name, color, bitmap };
+  }
+  if (color.browser) return { name: file.name, color: { ...color, space: "display-p3" }, bitmap: await viaBrowser(blob) };
+  throw new Error(
+    `${file.name}: ${color.detail}. Export it again as sRGB or Display P3 (in Photos for Mac: File → Export, Color Profile).`,
+  );
+}
+
+/**
+ * For ICC profiles we do not handle ourselves: let the browser convert the image
+ * into a Display P3 canvas, then keep those P3 code values as an untagged bitmap,
+ * so the rest of the tool sees the same kind of data as on the exact path.
+ */
+async function viaBrowser(blob: Blob): Promise<ImageBitmap> {
+  const managed = await createImageBitmap(blob, { imageOrientation: "from-image" });
+  const canvas = new OffscreenCanvas(managed.width, managed.height);
+  const ctx = canvas.getContext("2d", { colorSpace: "display-p3" })!;
+  ctx.drawImage(managed, 0, 0);
+  const p3 = ctx.getImageData(0, 0, managed.width, managed.height, { colorSpace: "display-p3" });
+  managed.close();
+  // Same bytes, labelled sRGB, so that drawing it later does not convert it again.
+  const raw = new ImageData(p3.data, p3.width, p3.height, { colorSpace: "srgb" });
+  return createImageBitmap(raw, { colorSpaceConversion: "none" });
 }
 
 export interface Pixels {

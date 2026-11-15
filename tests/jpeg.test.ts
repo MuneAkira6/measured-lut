@@ -99,11 +99,11 @@ describe("jpegColor", () => {
     expect(jpegColor(jpeg(app2Chunks(icc, 65519))).space).toBe("display-p3");
   });
 
-  it("rejects Adobe RGB and gamma-2.2 profiles", () => {
+  it("hands other RGB profiles (Adobe RGB, gamma 2.2) to the browser instead of guessing", () => {
     const adobe = iccProfile({ desc: "Adobe RGB (1998)", colorants: ADOBE, curve: { table: [] } });
-    expect(jpegColor(jpeg(app2Chunks(adobe, 65519))).space).toBeNull();
+    expect(jpegColor(jpeg(app2Chunks(adobe, 65519)))).toMatchObject({ space: null, browser: true });
     const g22 = iccProfile({ desc: "P3 gamma 2.2", colorants: P3, curve: { para: [2.2] } });
-    expect(jpegColor(jpeg(app2Chunks(g22, 65519)))).toMatchObject({ space: null, detail: "P3 gamma 2.2 (tone curve is not the sRGB curve)" });
+    expect(jpegColor(jpeg(app2Chunks(g22, 65519)))).toMatchObject({ space: null, browser: true, detail: "P3 gamma 2.2" });
   });
 
   it("falls back to EXIF ColorSpace, and recognises the DCF Adobe RGB marker", () => {

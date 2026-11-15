@@ -7,6 +7,9 @@
 //   2. No profile: the EXIF ColorSpace tag. 1 means sRGB. 0xFFFF ("uncalibrated")
 //      with Interoperability index "R03" is the DCF way of saying Adobe RGB.
 //   3. Nothing at all: assume sRGB, as browsers and the DCF spec do, and say so.
+// An RGB profile that is neither sRGB nor Display P3 (for example the LUT-based
+// "Apple Wide Color Sharing Profile" that Photos for Mac writes on export) is
+// flagged `browser: true`: the browser's colour management converts it instead.
 
 import { RGB_TO_XYZ, decode, matMul, mul, invert, type Mat3, type RgbSpace, type Vec3 } from "./color";
 
@@ -16,6 +19,8 @@ export interface JpegColor {
   source: "icc" | "exif" | "assumed";
   /** Human-readable: the profile description or what the EXIF tag said. */
   detail: string;
+  /** Has an RGB ICC profile we do not match exactly; let the browser convert it. */
+  browser?: boolean;
 }
 
 export function jpegColor(buf: ArrayBuffer): JpegColor {
@@ -27,7 +32,7 @@ export function jpegColor(buf: ArrayBuffer): JpegColor {
     if (e.interop === "R03") return { space: null, source: "exif", detail: "EXIF says Adobe RGB (R03)" };
     if (e.colorSpace === 0xffff) {
       // iPhone writes this for Display P3 and relies on the ICC profile, which is missing here.
-      return { space: null, source: "exif", detail: "EXIF says Uncalibrated and there is no ICC profile" };
+      return { space: null, source: "exif", detail: "No colour profile, and EXIF says Uncalibrated" };
     }
   }
   return { space: "srgb", source: "assumed", detail: "No ICC profile or EXIF colour space; assuming sRGB" };
@@ -156,17 +161,17 @@ function fromIcc(icc: Uint8Array): JpegColor {
   const r = xyz("rXYZ");
   const g = xyz("gXYZ");
   const b = xyz("bXYZ");
-  if (!r || !g || !b) return { space: null, source: "icc", detail: `${desc} (not a matrix/TRC profile)` };
+  if (!r || !g || !b) return { space: null, source: "icc", detail: desc, browser: true };
 
   const space = (Object.keys(EXPECTED) as RgbSpace[]).find((s) =>
     [r, g, b].every((col, j) => col.every((c, i) => Math.abs(c - EXPECTED[s][i][j]) < 0.005)),
   );
-  if (!space) return { space: null, source: "icc", detail: `${desc} (primaries are not sRGB or Display P3)` };
+  if (!space) return { space: null, source: "icc", detail: desc, browser: true };
 
   for (const sig of ["rTRC", "gTRC", "bTRC"]) {
     const curve = readCurve(v, tags.get(sig));
     const ok = curve && [0.02, 0.1, 0.25, 0.5, 0.75, 0.9].every((x) => Math.abs(curve(x) - decode(x)) < 0.002);
-    if (!ok) return { space: null, source: "icc", detail: `${desc} (tone curve is not the sRGB curve)` };
+    if (!ok) return { space: null, source: "icc", detail: desc, browser: true };
   }
   return { space, source: "icc", detail: desc };
 }
