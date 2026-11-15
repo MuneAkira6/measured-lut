@@ -45,7 +45,8 @@ function scene(n: number, seed: number) {
   return src;
 }
 
-describe("fitLut", () => {
+// These solve full 33^3 systems; shared CI runners need more than the 5 s default.
+describe("fitLut", { timeout: 30_000 }, () => {
   it("returns the identity when both cameras agree", () => {
     const src = scene(5000, 1);
     const { lut } = fitLut({ src, dst: src }, { size: 17, prior: "identity" });
