@@ -12,6 +12,14 @@ import { DEFAULT_SAMPLE_OPTIONS, samplePairs, type SampleOptions } from "./sampl
 /** Long side of the images the fitter works on. */
 const WORK = 1000;
 
+/** A phone -> camera pair shipped with the site, with its 4 point pairs already placed. */
+const SAMPLE = {
+  source: "sample/source.jpg",
+  target: "sample/target.jpg",
+  ptsA: [[505.0, 308.2], [1496.9, 227.2], [1264.5, 904.8], [481.9, 756.1]] as Point[],
+  ptsB: [[564.5, 210.7], [1578.8, 124.9], [1345.1, 822.2], [540.4, 669.2]] as Point[],
+};
+
 export function App() {
   const [src, setSrc] = useState<Photo | null>(null);
   const [dst, setDst] = useState<Photo | null>(null);
@@ -32,6 +40,25 @@ export function App() {
       const p = await readPhoto(file);
       (which === "src" ? setSrc : setDst)(p);
       (which === "src" ? setPtsA : setPtsB)([]);
+      setFit(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const loadSample = async () => {
+    setError(null);
+    try {
+      const get = async (path: string) => {
+        const res = await fetch(import.meta.env.BASE_URL + path);
+        if (!res.ok) throw new Error(`Could not load ${path}`);
+        return readPhoto(new File([await res.blob()], path.split("/").pop()!, { type: "image/jpeg" }));
+      };
+      const [a, b] = await Promise.all([get(SAMPLE.source), get(SAMPLE.target)]);
+      setSrc(a);
+      setDst(b);
+      setPtsA(SAMPLE.ptsA);
+      setPtsB(SAMPLE.ptsB);
       setFit(null);
     } catch (e) {
       setError((e as Error).message);
@@ -110,6 +137,7 @@ export function App() {
           <PhotoInput label="Source: the camera to change" photo={src} onFile={load("src")} />
           <PhotoInput label="Target: the colours to match" photo={dst} onFile={load("dst")} />
         </div>
+        <button onClick={loadSample}>Try a sample pair</button>
         {error && <p className="error">{error}</p>}
       </section>
 
