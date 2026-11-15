@@ -7,7 +7,7 @@ import { homography, warp, type Point } from "./geometry";
 import { toCube } from "./lut";
 import { Preview } from "./preview";
 import { deltaEStats, type ErrorStats } from "./report";
-import { DEFAULT_SAMPLE_OPTIONS, samplePairs, type SampleOptions } from "./samples";
+import { DEFAULT_SAMPLE_OPTIONS, alignmentScore, samplePairs, type SampleOptions } from "./samples";
 
 /** Long side of the images the fitter works on. */
 const WORK = 1000;
@@ -83,6 +83,11 @@ export function App() {
       return { error: (e as Error).message };
     }
   }, [workA, workB, ptsA, ptsB]);
+
+  const score = useMemo(() => {
+    if (!registered || "error" in registered || !workB) return null;
+    return alignmentScore(registered.rgb, registered.valid, workB.rgb, workB.w, workB.h);
+  }, [registered, workB]);
 
   const samples = useMemo(() => {
     if (!registered || "error" in registered || !workB) return null;
@@ -160,6 +165,16 @@ export function App() {
             Clear points
           </button>
           {registered && "error" in registered && <p className="error">{registered.error}</p>}
+          {score !== null &&
+            (score >= 0.6 ? (
+              <p className="note">Alignment score {score.toFixed(2)} (0.6 or more is good).</p>
+            ) : (
+              <p className="error">
+                Alignment score {Number.isNaN(score) ? "n/a" : score.toFixed(2).replace("-0.00", "0.00")}. Below 0.6, most test pairs fitted poorly. Put
+                the points on sharp details that did not move, spread across the frame. If that does not help, the two
+                shots were probably taken from too far apart.
+              </p>
+            ))}
         </section>
       )}
 

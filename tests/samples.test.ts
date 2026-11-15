@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SAMPLE_OPTIONS, Label, samplePairs } from "../src/samples";
+import { DEFAULT_SAMPLE_OPTIONS, Label, alignmentScore, samplePairs } from "../src/samples";
 
 // 128 x 128: left half mid grey, right half a darker grey, so there is one vertical
 // edge. Top-left 16 x 16 is pure white (clipped). The bottom 8 rows are outside the warp.
@@ -60,5 +60,28 @@ describe("samplePairs", () => {
       }
     const again = samplePairs(a, valid, b, w, h, { ...DEFAULT_SAMPLE_OPTIONS, sigma: 1 });
     expect(again.labels).toEqual(res.labels);
+  });
+});
+
+describe("alignmentScore", () => {
+  // A textured image: sums of sines at several frequencies.
+  const w = 160;
+  const h = 120;
+  const tex = (dx: number) => {
+    const rgb = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const v = 0.5 + 0.15 * Math.sin((x + dx) * 0.7) * Math.cos(y * 0.45) + 0.1 * Math.sin((x + dx + y) * 0.23);
+        rgb.fill(v, (y * w + x) * 3, (y * w + x) * 3 + 3);
+      }
+    return rgb;
+  };
+  const valid = new Uint8Array(w * h).fill(1);
+
+  it("is close to 1 for aligned images and drops when they are a few pixels off", () => {
+    const aligned = alignmentScore(tex(0), valid, tex(0), w, h);
+    const off = alignmentScore(tex(4), valid, tex(0), w, h);
+    expect(aligned).toBeGreaterThan(0.99);
+    expect(off).toBeLessThan(0.6);
   });
 });
